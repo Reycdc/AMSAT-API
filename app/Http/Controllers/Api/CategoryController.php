@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Category;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
 
 class CategoryController extends Controller
@@ -31,6 +32,12 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255|unique:categories',
         ]);
 
+
+        $data = [
+            'name' => $request->name,
+            'slug' => Str::slug($request->name)
+        ];
+        
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
@@ -39,12 +46,13 @@ class CategoryController extends Controller
             ], 422);
         }
 
-        $category = Category::create($request->all());
+        $category = Category::create($data);
 
         return response()->json([
             'success' => true,
             'message' => 'Category created successfully',
-            'data' => $category
+            'data' => $category,
+            'slug' => $data['slug']
         ], 201);
     }
 

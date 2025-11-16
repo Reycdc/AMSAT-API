@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -99,7 +101,28 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // Create bearer token without calling model methods
+        $plainTextToken = Str::random(40);
+
+        $insertData = [
+            'tokenable_type' => \App\Models\User::class,
+            'tokenable_id' => $user->id,
+            'name' => 'auth_token',
+            'token' => hash('sha256', $plainTextToken),
+            'abilities' => json_encode(['*']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        // If your personal_access_tokens table uses auto-increment id:
+        $tokenId = DB::table('personal_access_tokens')->insertGetId($insertData);
+
+        // If your table uses UUIDs, instead do:
+        // $tokenId = (string) \Illuminate\Support\Str::uuid();
+        // $insertData['id'] = $tokenId;
+        // \Illuminate\Support\Facades\DB::table('personal_access_tokens')->insert($insertData);
+
+        $token = $tokenId . '|' . $plainTextToken;
 
         return response()->json([
             'success' => true,
