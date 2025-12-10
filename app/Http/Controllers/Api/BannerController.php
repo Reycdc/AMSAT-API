@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Banner;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class BannerController extends Controller
@@ -109,7 +110,7 @@ class BannerController extends Controller
 
         if ($request->hasFile('gambar')) {
             // Delete old image
-            \Storage::disk('public')->delete($banner->gambar);
+            Storage::disk('public')->delete($banner->gambar);
             $banner->gambar = $request->file('gambar')->store('banners', 'public');
         }
 
@@ -140,7 +141,7 @@ class BannerController extends Controller
             ], 404);
         }
 
-        \Storage::disk('public')->delete($banner->gambar);
+        Storage::disk('public')->delete($banner->gambar);
         $banner->delete();
 
         return response()->json([
