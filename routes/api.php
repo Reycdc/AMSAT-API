@@ -1,7 +1,5 @@
 <?php
 
-// routes/api.php
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
@@ -28,57 +26,40 @@ Route::get('/banners', [BannerController::class, 'index']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/menus', [MenuController::class, 'index']);
 
-// Protected Routes
-Route::middleware('auth:sanctum')->group(function () {
-    
-    // Auth
+// CRITICAL FIX: NO auth:sanctum middleware!
+// RoleMiddleware handles both authentication and authorization
+
+// Authenticated Routes (any logged in user)
+Route::middleware('role:user|admin|editor|author|redaktur')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     
-    // Users (Admin Only)
-    Route::middleware('role:admin')->group(function () {
-        Route::apiResource('users', UserController::class);
-    });
-    
-    // Menus (Admin/Editor)
-    Route::middleware('role:admin|editor')->group(function () {
-        Route::apiResource('menus', MenuController::class)->except(['index']);
-    });
-    
-    // Galleries (Admin/Editor)
-    Route::middleware('role:admin|editor')->group(function () {
-        Route::apiResource('galleries', GalleryController::class)->except(['index']);
-    });
-    
-    // Memberships (Admin Only)
-    Route::middleware('role:admin')->group(function () {
-        Route::apiResource('memberships', MembershipController::class);
-    });
-    
-    // Categories (Admin/Editor)
-    Route::middleware('role:admin|editor')->group(function () {
-        Route::apiResource('categories', CategoryController::class)->except(['index']);
-    });
-    
-    // Banners (Admin Only)
-    Route::middleware('role:admin')->group(function () {
-        Route::apiResource('banners', BannerController::class)->except(['index']);
-    });
-    
-    // Content (Authenticated Users)
     Route::apiResource('content', ContentController::class)->except(['index', 'show']);
-    Route::post('/content/{id}/verify', [ContentController::class, 'verify'])->middleware('role:admin|redaktur');
-    
-    // Media (Content Owner or Admin)
     Route::apiResource('media', MediaController::class);
-    
-    // Comments (Authenticated Users)
     Route::apiResource('comments', CommentController::class);
     Route::get('/content/{id}/comments', [CommentController::class, 'getByContent']);
     
-    // Likes (Authenticated Users)
     Route::post('/content/{id}/like', [LikeController::class, 'toggle']);
     Route::get('/content/{id}/likes', [LikeController::class, 'getByContent']);
     Route::get('/my-likes', [LikeController::class, 'myLikes']);
+});
+
+// Admin Only Routes
+Route::middleware('role:admin')->group(function () {
+    Route::apiResource('users', UserController::class);
+    Route::apiResource('memberships', MembershipController::class);
+    Route::apiResource('banners', BannerController::class)->except(['index']);
+});
+
+// Admin/Editor Routes
+Route::middleware('role:admin|editor')->group(function () {
+    Route::apiResource('menus', MenuController::class)->except(['index']);
+    Route::apiResource('galleries', GalleryController::class)->except(['index']);
+    Route::apiResource('categories', CategoryController::class)->except(['index']);
+});
+
+// Admin/Redaktur Routes
+Route::middleware('role:admin|redaktur')->group(function () {
+    Route::post('/content/{id}/verify', [ContentController::class, 'verify']);
 });

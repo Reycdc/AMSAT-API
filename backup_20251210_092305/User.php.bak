@@ -9,7 +9,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable, HasRoles;
+    use HasApiTokens, HasRoles, Notifiable;
 
     protected $guard_name = 'api';
 
@@ -29,9 +29,6 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    // CRITICAL: Do NOT add $with property
-    // Do NOT override relationships
-
     protected function casts(): array
     {
         return [
@@ -40,4 +37,7 @@ class User extends Authenticatable
             'is_verified' => 'boolean',
         ];
     }
+
+    // NO ADDITIONAL RELATIONSHIPS HERE
+    // Spatie's HasRoles trait already provides roles() relationship
 }

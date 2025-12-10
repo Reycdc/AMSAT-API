@@ -29,9 +29,6 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    // CRITICAL: Do NOT add $with property
-    // Do NOT override relationships
-
     protected function casts(): array
     {
         return [

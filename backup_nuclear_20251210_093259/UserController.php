@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
@@ -17,8 +16,8 @@ class UserController extends Controller
             $perPage = $request->input('per_page', 15);
             $search = $request->input('search', '');
 
-            // CRITICAL: Use DB query builder to avoid model loading issues
-            $query = DB::table('users')->select([
+            // Use select() to prevent auto-loading relationships
+            $query = User::query()->select([
                 'id', 
                 'username', 
                 'email', 
@@ -38,7 +37,7 @@ class UserController extends Controller
                 });
             }
 
-            $users = $query->latest('created_at')->paginate($perPage);
+            $users = $query->latest()->paginate($perPage);
 
             return response()->json([
                 'success' => true,
@@ -47,10 +46,12 @@ class UserController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            // Simple error without complex logging
+            \Log::error('UserController@index error: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve users'
+                'message' => 'Failed to retrieve users',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -74,19 +75,11 @@ class UserController extends Controller
                 ], 422);
             }
 
-            $userId = DB::table('users')->insertGetId([
-                'username' => $request->username,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'jenis_kelamin' => $request->jenis_kelamin,
-                'alamat' => $request->alamat,
-                'status' => 'active',
-                'is_verified' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $data = $request->only(['username', 'email', 'jenis_kelamin', 'alamat']);
+            $data['password'] = Hash::make($request->password);
+            $data['status'] = 'active';
 
-            $user = DB::table('users')->where('id', $userId)->first();
+            $user = User::create($data);
 
             return response()->json([
                 'success' => true,
@@ -97,7 +90,8 @@ class UserController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create user'
+                'message' => 'Failed to create user',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -105,19 +99,11 @@ class UserController extends Controller
     public function show(string $id)
     {
         try {
-            $user = DB::table('users')
-                ->select(['id', 'username', 'email', 'jenis_kelamin', 
-                         'thumbnail', 'alamat', 'is_verified', 'status',
-                         'created_at', 'updated_at'])
-                ->where('id', $id)
-                ->first();
-            
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
+            $user = User::select([
+                'id', 'username', 'email', 'jenis_kelamin', 
+                'thumbnail', 'alamat', 'is_verified', 'status',
+                'created_at', 'updated_at'
+            ])->findOrFail($id);
             
             return response()->json([
                 'success' => true,
@@ -134,14 +120,7 @@ class UserController extends Controller
     public function update(Request $request, string $id)
     {
         try {
-            $user = DB::table('users')->where('id', $id)->first();
-            
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
+            $user = User::findOrFail($id);
 
             $validator = Validator::make($request->all(), [
                 'email' => 'sometimes|email|unique:users,email,' . $id,
@@ -156,22 +135,18 @@ class UserController extends Controller
                 ], 422);
             }
 
-            $data = [];
-            if ($request->has('email')) $data['email'] = $request->email;
-            if ($request->has('jenis_kelamin')) $data['jenis_kelamin'] = $request->jenis_kelamin;
-            if ($request->has('alamat')) $data['alamat'] = $request->alamat;
-            if ($request->has('status')) $data['status'] = $request->status;
-            if ($request->has('password')) $data['password'] = Hash::make($request->password);
-            $data['updated_at'] = now();
+            $data = $request->only(['email', 'jenis_kelamin', 'alamat', 'status']);
+            
+            if ($request->has('password')) {
+                $data['password'] = Hash::make($request->password);
+            }
 
-            DB::table('users')->where('id', $id)->update($data);
-
-            $updatedUser = DB::table('users')->where('id', $id)->first();
+            $user->update($data);
 
             return response()->json([
                 'success' => true,
                 'message' => 'User updated successfully',
-                'data' => $updatedUser
+                'data' => $user
             ], 200);
 
         } catch (\Exception $e) {
@@ -185,14 +160,8 @@ class UserController extends Controller
     public function destroy(string $id)
     {
         try {
-            $deleted = DB::table('users')->where('id', $id)->delete();
-
-            if (!$deleted) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
+            $user = User::findOrFail($id);
+            $user->delete();
 
             return response()->json([
                 'success' => true,

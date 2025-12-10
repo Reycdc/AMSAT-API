@@ -27,7 +27,7 @@ class RoleMiddleware
             
             // Get token data from database
             $tokenData = DB::table('personal_access_tokens')
-                ->select('tokenable_id', 'expires_at')
+                ->select('tokenable_id', 'expires_at', 'last_used_at')
                 ->where('token', $hashedToken)
                 ->first();
             
@@ -38,11 +38,11 @@ class RoleMiddleware
                 ], 401);
             }
             
-            // Check expiration
+            // Check if token is expired
             if ($tokenData->expires_at && now()->greaterThan($tokenData->expires_at)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Token expired'
+                    'message' => 'Unauthenticated - Token expired'
                 ], 401);
             }
             
@@ -57,29 +57,20 @@ class RoleMiddleware
             if (!$user || $user->status !== 'active') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User not found or inactive'
+                    'message' => 'Unauthenticated - User not found or inactive'
                 ], 401);
             }
             
-            // CRITICAL FIX: Split pipe-separated roles
-            // Laravel passes 'admin|editor' as ONE string, not two parameters
-            $allRoles = [];
-            foreach ($roles as $roleString) {
-                // Split by pipe to handle 'admin|editor' format
-                $splitRoles = explode('|', $roleString);
-                $allRoles = array_merge($allRoles, $splitRoles);
-            }
-            // Remove duplicates and empty strings
-            $allRoles = array_filter(array_unique($allRoles));
-            
-            // Check if user has ANY of the required roles
+            // CRITICAL FIX: Try both model_type formats
+            // Some databases store with single backslash, some with double
             $hasRole = false;
             
-            foreach ($allRoles as $role) {
+            foreach ($roles as $role) {
+                // Try with single backslash first
                 $roleCount = DB::table('model_has_roles')
                     ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
                     ->where('model_has_roles.model_id', $userId)
-                    ->where('roles.name', trim($role))  // Trim whitespace
+                    ->where('roles.name', $role)
                     ->where('roles.guard_name', 'api')
                     ->where(function($query) {
                         // Accept both single and double backslash
@@ -97,12 +88,11 @@ class RoleMiddleware
             if (!$hasRole) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized. Required role: ' . implode(' or ', $allRoles),
+                    'message' => 'Unauthorized - Required role: ' . implode(' or ', $roles),
                     'user' => $user->username,
                     'debug' => config('app.debug') ? [
                         'user_id' => $userId,
-                        'roles_checked' => $allRoles,
-                        'raw_input' => $roles
+                        'roles_checked' => $roles
                     ] : null
                 ], 403);
             }
@@ -112,7 +102,7 @@ class RoleMiddleware
                 ->where('token', $hashedToken)
                 ->update(['last_used_at' => now()]);
             
-            // Store auth data for controllers
+            // Store authenticated user data in request
             $request->merge([
                 'auth_user_id' => $userId,
                 'auth_user_email' => $user->email,
@@ -124,7 +114,7 @@ class RoleMiddleware
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Authorization failed',
+                'message' => 'Authorization check failed',
                 'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
