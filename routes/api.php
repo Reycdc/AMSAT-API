@@ -52,6 +52,7 @@ Route::middleware('role:admin')->group(function () {
     Route::apiResource('banners', BannerController::class)->except(['index']);
 });
 
+
 // Admin/Editor Routes
 Route::middleware('role:admin|editor')->group(function () {
     Route::apiResource('menus', MenuController::class)->except(['index']);
