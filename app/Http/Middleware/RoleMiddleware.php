@@ -6,6 +6,8 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class RoleMiddleware
 {
@@ -48,11 +50,8 @@ class RoleMiddleware
             
             $userId = $tokenData->tokenable_id;
             
-            // Verify user exists and is active
-            $user = DB::table('users')
-                ->select('id', 'username', 'email', 'status')
-                ->where('id', $userId)
-                ->first();
+            // CRITICAL FIX: Load full User model and set it in Auth
+            $user = User::find($userId);
             
             if (!$user || $user->status !== 'active') {
                 return response()->json([
@@ -60,6 +59,9 @@ class RoleMiddleware
                     'message' => 'User not found or inactive'
                 ], 401);
             }
+            
+            // SET AUTHENTICATED USER - This makes auth()->id() and auth()->user() work
+            Auth::setUser($user);
             
             // CRITICAL FIX: Split pipe-separated roles
             // Laravel passes 'admin|editor' as ONE string, not two parameters
@@ -112,7 +114,7 @@ class RoleMiddleware
                 ->where('token', $hashedToken)
                 ->update(['last_used_at' => now()]);
             
-            // Store auth data for controllers
+            // Store auth data for controllers (backward compatibility)
             $request->merge([
                 'auth_user_id' => $userId,
                 'auth_user_email' => $user->email,
