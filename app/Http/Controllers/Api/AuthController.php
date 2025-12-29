@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -184,7 +185,7 @@ class AuthController extends Controller
                 $hashedToken = hash('sha256', $token);
                 
                 // Delete the token directly from database
-                \DB::table('personal_access_tokens')
+                DB::table('personal_access_tokens')
                     ->where('token', $hashedToken)
                     ->where('tokenable_id', $user->id)
                     ->delete();

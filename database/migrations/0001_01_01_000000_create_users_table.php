@@ -13,6 +13,7 @@ return new class extends Migration {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('username')->unique();
+            $table->string('callsign')->unique()->nullable();
             $table->string('password');
             $table->string('jenis_kelamin');
             $table->string('thumbnail')->nullable();
@@ -27,7 +28,7 @@ return new class extends Migration {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
-        });
+        }); 
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();

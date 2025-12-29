@@ -1,0 +1,1680 @@
+{
+    "info": {
+        "_postman_id": "amsat-api-collection",
+        "name": "AMSAT API Collection",
+        "description": "Complete API collection for AMSAT-API Laravel project",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000/api",
+            "type": "string"
+        },
+        {
+            "key": "token",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Register",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\",\n    \"jenis_kelamin\": \"L\",\n    \"alamat\": \"Jl. Test No. 123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/register",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "register"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.data && jsonData.data.access_token) {",
+                                    "    pm.collectionVariables.set('token', jsonData.data.access_token);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"admin\",\n    \"password\": \"password\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/logout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "logout"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Profile",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/profile",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "profile"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Profile",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"alamat\": \"Jl. Updated Address No. 456\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/profile",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "profile"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Users (Admin Only)",
+            "item": [
+                {
+                    "name": "Get All Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get User by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/users/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"newuser\",\n    \"email\": \"newuser@example.com\",\n    \"password\": \"password123\",\n    \"jenis_kelamin\": \"Laki-laki\",\n    \"alamat\": \"Jl. New User No. 1\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update User",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"status\": \"active\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/users/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete User",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/users/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Content",
+            "item": [
+                {
+                    "name": "Get All Content (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/content",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "content"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Content by ID (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/content/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "content",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Content",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "menu_id",
+                                    "value": "1",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "title",
+                                    "value": "Test Article",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "isi",
+                                    "value": "This is the content of the article.",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "date",
+                                    "value": "2025-12-29",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/content",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "content"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Content",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Updated Title\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/content/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "content",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Content",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/content/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "content",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Verify Content (Admin/Redaktur)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/content/1/verify",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "content",
+                                "1",
+                                "verify"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Media",
+            "item": [
+                {
+                    "name": "Get All Media",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/media",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "media"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Media by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/media/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "media",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Media",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "content_id",
+                                    "value": "1",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "link",
+                                    "value": "https://example.com/video",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/media",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "media"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Media",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"link\": \"https://example.com/new-video\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/media/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "media",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Media",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/media/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "media",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Categories",
+            "item": [
+                {
+                    "name": "Get All Categories (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/categories",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "categories"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Category by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/categories/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "categories",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Category",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"New Category\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/categories",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "categories"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Category",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated Category\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/categories/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "categories",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Category",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/categories/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "categories",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Menus",
+            "item": [
+                {
+                    "name": "Get All Menus (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/menus",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "menus"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Menu by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/menus/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "menus",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Menu",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"New Menu\",\n    \"urutan\": 1\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/menus",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "menus"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Menu",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Updated Menu\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/menus/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "menus",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Menu",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/menus/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "menus",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Galleries",
+            "item": [
+                {
+                    "name": "Get All Galleries (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/galleries",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "galleries"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Gallery by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/galleries/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "galleries",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Gallery",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "title",
+                                    "value": "Test Gallery",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "description",
+                                    "value": "Test description",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "image",
+                                    "type": "file",
+                                    "src": []
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/galleries",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "galleries"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Gallery",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Updated Gallery\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/galleries/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "galleries",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Gallery",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/galleries/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "galleries",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Banners",
+            "item": [
+                {
+                    "name": "Get All Banners (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/banners",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "banners"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Banner by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/banners/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "banners",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Banner",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "gambar",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "1",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/banners",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "banners"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Banner",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"status\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/banners/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "banners",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Banner",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/banners/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "banners",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Memberships (Admin Only)",
+            "item": [
+                {
+                    "name": "Get All Memberships",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/memberships",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "memberships"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Membership by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/memberships/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "memberships",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Membership",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"user_id\": 1,\n    \"type\": \"premium\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/memberships",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "memberships"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Membership",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"type\": \"vip\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/memberships/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "memberships",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Membership",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/memberships/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "memberships",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Comments",
+            "item": [
+                {
+                    "name": "Get All Comments",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/comments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "comments"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Comment by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/comments/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "comments",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Comments by Content",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/content/1/comments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "content",
+                                "1",
+                                "comments"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Comment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"news_id\": 1,\n    \"comment\": \"This is a test comment.\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/comments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "comments"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Comment",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"comment\": \"Updated comment text.\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/comments/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "comments",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Comment",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/comments/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "comments",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Likes",
+            "item": [
+                {
+                    "name": "Toggle Like",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/content/1/like",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "content",
+                                "1",
+                                "like"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Likes by Content",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/content/1/likes",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "content",
+                                "1",
+                                "likes"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get My Likes",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/my-likes",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "my-likes"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}
