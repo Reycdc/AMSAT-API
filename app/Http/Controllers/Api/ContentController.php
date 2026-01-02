@@ -23,8 +23,27 @@ class ContentController extends Controller
             $menuId = $request->get('menu_id');
             $categoryId = $request->get('category_id');
 
+            $isDashboard = $request->get('mode') === 'dashboard';
+            
+            // Explicitly try to get user from sanctum guard
+            $user = null;
+            if ($request->bearerToken()) {
+                $user = auth('sanctum')->user();
+            }
+
             $contents = Content::with(['user', 'menu', 'categories', 'media'])
-                ->whereNotNull('is_verified')
+                ->when($isDashboard && $user, function ($query) use ($user) {
+                    // Dashboard mode: 
+                    if (!$user->hasRole(['admin', 'redaktur'])) {
+                         $query->where('user_id', $user->id);
+                    }
+                    // Show all statuses for dashboard
+                }, function ($query) {
+                    // Public mode: Only show Accepted content
+                    // Also handle ancient content that might be verified but status is null (if any)
+                    // But we rely on 'status'='Accept'
+                    $query->where('status', 'Accept');
+                })
                 ->when($search, function ($query, $search) {
                     return $query->where('title', 'like', "%{$search}%")
                         ->orWhere('isi', 'like', "%{$search}%");
@@ -89,6 +108,7 @@ class ContentController extends Controller
                 'isi' => $request->isi,
                 'cover' => $coverPath,
                 'date' => $request->date,
+                'status' => 'Pending',
                 'has_read' => 0,
             ]);
 
@@ -159,7 +179,7 @@ class ContentController extends Controller
             }
 
             // Check ownership
-            if ($content->user_id !== auth()->id() && !auth()->user()->hasRole(['admin', 'editor'])) {
+            if ($content->user_id !== auth()->id() && !auth()->user()->hasRole(['admin', 'redaktur', 'editor'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized'
@@ -191,7 +211,17 @@ class ContentController extends Controller
                 $content->cover = $request->file('cover')->store('covers', 'public');
             }
 
-            $content->fill($request->except(['cover', 'category_ids']));
+            // Prevent authors from changing status
+            $data = $request->except(['cover', 'category_ids']);
+            if (!auth()->user()->hasRole(['admin', 'redaktur'])) {
+                unset($data['status']);
+            }
+            // If admin/redaktur and status provided, ensure redaktur_id is set
+            if (isset($data['status']) && in_array($data['status'], ['Accept', 'Reject'])) {
+                $data['redaktur_id'] = auth()->id();
+            }
+
+            $content->fill($data);
             $content->save();
 
             // Sync categories
@@ -256,6 +286,41 @@ class ContentController extends Controller
     }
 
     /**
+     * Get pending content (admin/redaktur only)
+     */
+    public function pending(Request $request)
+    {
+        try {
+            $perPage = $request->get('per_page', 15);
+            $search = $request->get('search');
+            $menuId = $request->get('menu_id');
+
+            $contents = Content::with(['user', 'menu', 'categories'])
+                ->where('status', 'Pending')
+                ->when($search, function ($query, $search) {
+                    return $query->where('title', 'like', "%{$search}%")
+                        ->orWhere('isi', 'like', "%{$search}%");
+                })
+                ->when($menuId, function ($query, $menuId) {
+                    return $query->where('menu_id', $menuId);
+                })
+                ->latest('created_at')
+                ->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data' => $contents
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve pending content',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
+    }
+
+    /**
      * Verify content (admin/redaktur only)
      */
     public function verify(Request $request, $id)
@@ -270,13 +335,25 @@ class ContentController extends Controller
                 ], 404);
             }
 
-            $content->is_verified = now();
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:Pending,Accept,Reject'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $content->status = $request->status;
             $content->redaktur_id = auth()->id();
             $content->save();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Content verified successfully',
+                'message' => 'Content status updated to ' . $content->status,
                 'data' => $content->load(['user', 'redaktur'])
             ], 200);
         } catch (\Exception $e) {

@@ -19,13 +19,12 @@ class Content extends Model
         'has_read',
         'cover',
         'date',
-        'is_verified',
+        'status',
         'redaktur_id',
     ];
 
     protected $casts = [
         'date' => 'datetime',
-        'is_verified' => 'datetime',
     ];
 
     /**

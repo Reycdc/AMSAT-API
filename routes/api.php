@@ -45,6 +45,7 @@ Route::middleware('role:user|admin|editor|author|redaktur')->group(function () {
     Route::put('/profile', [AuthController::class, 'updateProfile']);
 
     Route::apiResource('content', ContentController::class)->except(['index', 'show']);
+    Route::post('/content/{id}/verify', [ContentController::class, 'verify']);
     Route::apiResource('media', MediaController::class);
     Route::apiResource('comments', CommentController::class);
     Route::get('/content/{id}/comments', [CommentController::class, 'getByContent']);
