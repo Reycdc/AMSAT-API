@@ -12,14 +12,25 @@ class MembershipController extends Controller
     /**
      * Display a listing of memberships
      */
+    /**
+     * Display a listing of memberships
+     */
     public function index()
     {
-        $memberships = Membership::with('user')->latest()->get();
+        try {
+            $memberships = Membership::with('user')->latest()->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $memberships
-        ], 200);
+            return response()->json([
+                'success' => true,
+                'data' => $memberships
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve memberships',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -40,13 +51,21 @@ class MembershipController extends Controller
             ], 422);
         }
 
-        $membership = Membership::create($request->all());
+        try {
+            $membership = Membership::create($request->all());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Membership created successfully',
-            'data' => $membership->load('user')
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Membership created successfully',
+                'data' => $membership->load('user')
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create membership',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -54,19 +73,27 @@ class MembershipController extends Controller
      */
     public function show($id)
     {
-        $membership = Membership::with('user')->find($id);
+        try {
+            $membership = Membership::with('user')->find($id);
 
-        if (!$membership) {
+            if (!$membership) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Membership not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $membership
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Membership not found'
-            ], 404);
+                'message' => 'Failed to retrieve membership',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => $membership
-        ], 200);
     }
 
     /**
@@ -74,34 +101,42 @@ class MembershipController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $membership = Membership::find($id);
+        try {
+            $membership = Membership::find($id);
 
-        if (!$membership) {
+            if (!$membership) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Membership not found'
+                ], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'type' => 'required|in:free,premium,vip',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $membership->update($request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Membership updated successfully',
+                'data' => $membership->load('user')
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Membership not found'
-            ], 404);
+                'message' => 'Failed to update membership',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        $validator = Validator::make($request->all(), [
-            'type' => 'required|in:free,premium,vip',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $membership->update($request->all());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Membership updated successfully',
-            'data' => $membership->load('user')
-        ], 200);
     }
 
     /**
@@ -109,20 +144,28 @@ class MembershipController extends Controller
      */
     public function destroy($id)
     {
-        $membership = Membership::find($id);
+        try {
+            $membership = Membership::find($id);
 
-        if (!$membership) {
+            if (!$membership) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Membership not found'
+                ], 404);
+            }
+
+            $membership->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Membership deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Membership not found'
-            ], 404);
+                'message' => 'Failed to delete membership',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        $membership->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Membership deleted successfully'
-        ], 200);
     }
 }

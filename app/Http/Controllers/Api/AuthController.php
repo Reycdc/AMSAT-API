@@ -21,12 +21,12 @@ class AuthController extends Controller
     {
         // First try Sanctum's user (if available)
         $user = $request->user();
-        
+
         // If not available, get from RoleMiddleware's auth_user_id
         if (!$user && $request->has('auth_user_id')) {
             $user = User::find($request->input('auth_user_id'));
         }
-        
+
         return $user;
     }
 
@@ -100,6 +100,7 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+
         $validator = Validator::make($request->all(), [
             'username' => 'required|string',
             'password' => 'required|string'
@@ -116,8 +117,8 @@ class AuthController extends Controller
         try {
             // Find user by username or email
             $user = User::where('username', $request->username)
-                        ->orWhere('email', $request->username)
-                        ->first();
+                ->orWhere('email', $request->username)
+                ->first();
 
             // Check if user exists and password is correct
             if (!$user || !Hash::check($request->password, $user->password)) {
@@ -178,11 +179,11 @@ class AuthController extends Controller
 
             // Get token from request
             $token = $request->bearerToken();
-            
+
             if ($token) {
                 // Hash token like Sanctum does
                 $hashedToken = hash('sha256', $token);
-                
+
                 // Delete the token directly from database
                 \DB::table('personal_access_tokens')
                     ->where('token', $hashedToken)

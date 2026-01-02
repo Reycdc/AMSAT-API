@@ -7,38 +7,35 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
     public function index(Request $request)
     {
         try {
-            $perPage = $request->input('per_page', 15);
+            $perPage = $request->input('per_page', 10);
             $search = $request->input('search', '');
+            $role = $request->input('role', '');
+            $status = $request->input('status', '');
 
-            // CRITICAL: Use DB query builder to avoid model loading issues
-            $query = DB::table('users')->select([
-                'id', 
-                'username', 
-                'email', 
-                'jenis_kelamin', 
-                'thumbnail',
-                'alamat',
-                'is_verified',
-                'status', 
-                'created_at',
-                'updated_at'
-            ]);
+            $query = User::with('roles')->latest();
 
             if (!empty($search)) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('username', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             }
 
-            $users = $query->latest('created_at')->paginate($perPage);
+            if (!empty($role)) {
+                $query->role($role);
+            }
+
+            if (!empty($status)) {
+                $query->where('status', $status);
+            }
+
+            $users = $query->paginate($perPage);
 
             return response()->json([
                 'success' => true,
@@ -47,57 +44,56 @@ class UserController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            // Simple error without complex logging
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve users'
+                'message' => 'Failed to retrieve users: ' . $e->getMessage()
             ], 500);
         }
     }
 
     public function store(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|string|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+            'alamat' => 'nullable|string',
+            'role' => 'required|exists:roles,name',
+            'status' => 'required|in:Active,Inactive,Suspended',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         try {
-            $validator = Validator::make($request->all(), [
-                'username' => 'required|string|max:255|unique:users',
-                'email' => 'required|string|email|max:255|unique:users',
-                'password' => 'required|string|min:8',
-                'jenis_kelamin' => 'required|string|in:Laki-laki,Perempuan',
-                'alamat' => 'nullable|string',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $userId = DB::table('users')->insertGetId([
+            $user = User::create([
                 'username' => $request->username,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'jenis_kelamin' => $request->jenis_kelamin,
                 'alamat' => $request->alamat,
-                'status' => 'active',
-                'is_verified' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'status' => $request->status,
+                'is_verified' => true, // Admin created users are verified by default
             ]);
 
-            $user = DB::table('users')->where('id', $userId)->first();
+            $user->assignRole($request->role);
 
             return response()->json([
                 'success' => true,
                 'message' => 'User created successfully',
-                'data' => $user
+                'data' => $user->load('roles')
             ], 201);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create user'
+                'message' => 'Failed to create user: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -105,20 +101,15 @@ class UserController extends Controller
     public function show(string $id)
     {
         try {
-            $user = DB::table('users')
-                ->select(['id', 'username', 'email', 'jenis_kelamin', 
-                         'thumbnail', 'alamat', 'is_verified', 'status',
-                         'created_at', 'updated_at'])
-                ->where('id', $id)
-                ->first();
-            
+            $user = User::with('roles')->find($id);
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User not found'
                 ], 404);
             }
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $user
@@ -126,58 +117,62 @@ class UserController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
-            ], 404);
+                'message' => 'Failed to fetch user'
+            ], 500);
         }
     }
 
     public function update(Request $request, string $id)
     {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'username' => 'sometimes|string|max:255|unique:users,username,' . $id,
+            'email' => 'sometimes|email|unique:users,email,' . $id,
+            'password' => 'nullable|min:8',
+            'jenis_kelamin' => 'sometimes|in:Laki-laki,Perempuan',
+            'alamat' => 'nullable|string',
+            'role' => 'sometimes|exists:roles,name',
+            'status' => 'sometimes|in:Active,Inactive,Suspended',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         try {
-            $user = DB::table('users')->where('id', $id)->first();
-            
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
+            $data = $request->only(['username', 'email', 'jenis_kelamin', 'alamat', 'status']);
+
+            if ($request->filled('password')) {
+                $data['password'] = Hash::make($request->password);
             }
 
-            $validator = Validator::make($request->all(), [
-                'email' => 'sometimes|email|unique:users,email,' . $id,
-                'password' => 'sometimes|min:8',
-                'status' => 'sometimes|in:active,inactive,banned',
-            ]);
+            $user->update($data);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
+            if ($request->has('role')) {
+                $user->syncRoles([$request->role]);
             }
-
-            $data = [];
-            if ($request->has('email')) $data['email'] = $request->email;
-            if ($request->has('jenis_kelamin')) $data['jenis_kelamin'] = $request->jenis_kelamin;
-            if ($request->has('alamat')) $data['alamat'] = $request->alamat;
-            if ($request->has('status')) $data['status'] = $request->status;
-            if ($request->has('password')) $data['password'] = Hash::make($request->password);
-            $data['updated_at'] = now();
-
-            DB::table('users')->where('id', $id)->update($data);
-
-            $updatedUser = DB::table('users')->where('id', $id)->first();
 
             return response()->json([
                 'success' => true,
                 'message' => 'User updated successfully',
-                'data' => $updatedUser
+                'data' => $user->load('roles')
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update user'
+                'message' => 'Failed to update user: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -185,14 +180,16 @@ class UserController extends Controller
     public function destroy(string $id)
     {
         try {
-            $deleted = DB::table('users')->where('id', $id)->delete();
+            $user = User::find($id);
 
-            if (!$deleted) {
+            if (!$user) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User not found'
                 ], 404);
             }
+
+            $user->delete();
 
             return response()->json([
                 'success' => true,

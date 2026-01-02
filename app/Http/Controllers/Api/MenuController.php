@@ -12,17 +12,76 @@ class MenuController extends Controller
     /**
      * Display a listing of menus
      */
+    /**
+     * Display a listing of menus
+     */
     public function index()
     {
-        $menus = Menu::with('children', 'parent')
-            ->whereNull('parent_id')
-            ->orderBy('urutan')
-            ->get();
+        try {
+            $menus = Menu::with('children', 'parent')
+                ->whereNull('parent_id')
+                ->orderBy('urutan')
+                ->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $menus
-        ], 200);
+            return response()->json([
+                'success' => true,
+                'data' => $menus
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve menus',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get flat list of all menus for dropdown selection
+     */
+    public function flat()
+    {
+        try {
+            $menus = Menu::withCount('contents')
+                ->orderBy('urutan')
+                ->get();
+
+            // Flatten with hierarchy labels
+            $flatMenus = [];
+            $this->flattenMenus($menus->whereNull('parent_id'), $flatMenus, $menus);
+
+            return response()->json([
+                'success' => true,
+                'data' => $flatMenus
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve menus',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper to flatten menus with hierarchy
+     */
+    private function flattenMenus($items, &$result, $allMenus, $prefix = '')
+    {
+        foreach ($items as $item) {
+            $result[] = [
+                'id' => $item->id,
+                'title' => $item->title,
+                'label' => $prefix . $item->title,
+                'parent_id' => $item->parent_id,
+                'contents_count' => $item->contents_count,
+            ];
+
+            $children = $allMenus->where('parent_id', $item->id);
+            if ($children->count() > 0) {
+                $this->flattenMenus($children, $result, $allMenus, $prefix . $item->title . ' > ');
+            }
+        }
     }
 
     /**
@@ -44,13 +103,21 @@ class MenuController extends Controller
             ], 422);
         }
 
-        $menu = Menu::create($request->all());
+        try {
+            $menu = Menu::create($request->all());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Menu created successfully',
-            'data' => $menu->load('parent')
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu created successfully',
+                'data' => $menu->load('parent')
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create menu',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -58,19 +125,27 @@ class MenuController extends Controller
      */
     public function show($id)
     {
-        $menu = Menu::with('children', 'parent')->find($id);
+        try {
+            $menu = Menu::with('children', 'parent')->find($id);
 
-        if (!$menu) {
+            if (!$menu) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Menu not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $menu
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Menu not found'
-            ], 404);
+                'message' => 'Failed to retrieve menu',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => $menu
-        ], 200);
     }
 
     /**
@@ -78,44 +153,52 @@ class MenuController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $menu = Menu::find($id);
+        try {
+            $menu = Menu::find($id);
 
-        if (!$menu) {
+            if (!$menu) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Menu not found'
+                ], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'title' => 'sometimes|string|max:255',
+                'parent_id' => 'nullable|exists:menus,id',
+                'urutan' => 'nullable|integer',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Prevent menu from being its own parent
+            if ($request->parent_id == $id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Menu cannot be its own parent'
+                ], 422);
+            }
+
+            $menu->update($request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu updated successfully',
+                'data' => $menu->load('parent', 'children')
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Menu not found'
-            ], 404);
+                'message' => 'Failed to update menu',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        $validator = Validator::make($request->all(), [
-            'title' => 'sometimes|string|max:255',
-            'parent_id' => 'nullable|exists:menus,id',
-            'urutan' => 'nullable|integer',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Prevent menu from being its own parent
-        if ($request->parent_id == $id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Menu cannot be its own parent'
-            ], 422);
-        }
-
-        $menu->update($request->all());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Menu updated successfully',
-            'data' => $menu->load('parent', 'children')
-        ], 200);
     }
 
     /**
@@ -123,20 +206,28 @@ class MenuController extends Controller
      */
     public function destroy($id)
     {
-        $menu = Menu::find($id);
+        try {
+            $menu = Menu::find($id);
 
-        if (!$menu) {
+            if (!$menu) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Menu not found'
+                ], 404);
+            }
+
+            $menu->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Menu not found'
-            ], 404);
+                'message' => 'Failed to delete menu',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        $menu->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Menu deleted successfully'
-        ], 200);
     }
 }

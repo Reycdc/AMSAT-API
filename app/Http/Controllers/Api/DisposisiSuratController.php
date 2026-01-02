@@ -13,26 +13,37 @@ class DisposisiSuratController extends Controller
     /**
      * Display a listing of disposisi
      */
+    /**
+     * Display a listing of disposisi
+     */
     public function index(Request $request)
     {
-        $perPage = $request->get('per_page', 15);
-        $status = $request->get('status');
-        $userId = $request->get('user_id');
+        try {
+            $perPage = $request->get('per_page', 15);
+            $status = $request->get('status');
+            $userId = $request->get('user_id');
 
-        $disposisi = DisposisiSurat::with(['suratMasuk', 'dariUser', 'kepadaUser'])
-            ->when($status, function ($query, $status) {
-                return $query->byStatus($status);
-            })
-            ->when($userId, function ($query, $userId) {
-                return $query->forUser($userId);
-            })
-            ->latest()
-            ->paginate($perPage);
+            $disposisi = DisposisiSurat::with(['suratMasuk', 'dariUser', 'kepadaUser'])
+                ->when($status, function ($query, $status) {
+                    return $query->byStatus($status);
+                })
+                ->when($userId, function ($query, $userId) {
+                    return $query->forUser($userId);
+                })
+                ->latest()
+                ->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'data' => $disposisi
-        ], 200);
+            return response()->json([
+                'success' => true,
+                'data' => $disposisi
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve disposisi',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -55,32 +66,40 @@ class DisposisiSuratController extends Controller
             ], 422);
         }
 
-        $suratMasuk = SuratMasuk::find($request->id_surat_masuk);
+        try {
+            $suratMasuk = SuratMasuk::find($request->id_surat_masuk);
 
-        if (!$suratMasuk->canBeDispositioned()) {
+            if (!$suratMasuk->canBeDispositioned()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Surat sudah selesai, tidak bisa didisposisikan'
+                ], 422);
+            }
+
+            $disposisi = DisposisiSurat::create([
+                'id_surat_masuk' => $request->id_surat_masuk,
+                'dari_user_id' => auth()->id(),
+                'kepada_user_id' => $request->kepada_user_id,
+                'instruksi' => $request->instruksi,
+                'catatan' => $request->catatan,
+                'status' => 'pending',
+            ]);
+
+            // Update surat masuk status
+            $suratMasuk->update(['status' => 'diproses']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disposisi created successfully',
+                'data' => $disposisi->load(['suratMasuk', 'dariUser', 'kepadaUser'])
+            ], 201);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Surat sudah selesai, tidak bisa didisposisikan'
-            ], 422);
+                'message' => 'Failed to create disposisi',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        $disposisi = DisposisiSurat::create([
-            'id_surat_masuk' => $request->id_surat_masuk,
-            'dari_user_id' => auth()->id(),
-            'kepada_user_id' => $request->kepada_user_id,
-            'instruksi' => $request->instruksi,
-            'catatan' => $request->catatan,
-            'status' => 'pending',
-        ]);
-
-        // Update surat masuk status
-        $suratMasuk->update(['status' => 'diproses']);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Disposisi created successfully',
-            'data' => $disposisi->load(['suratMasuk', 'dariUser', 'kepadaUser'])
-        ], 201);
     }
 
     /**
@@ -88,19 +107,27 @@ class DisposisiSuratController extends Controller
      */
     public function show($id)
     {
-        $disposisi = DisposisiSurat::with(['suratMasuk', 'dariUser', 'kepadaUser'])->find($id);
+        try {
+            $disposisi = DisposisiSurat::with(['suratMasuk', 'dariUser', 'kepadaUser'])->find($id);
 
-        if (!$disposisi) {
+            if (!$disposisi) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Disposisi not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $disposisi
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Disposisi not found'
-            ], 404);
+                'message' => 'Failed to retrieve disposisi',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => $disposisi
-        ], 200);
     }
 
     /**
@@ -108,44 +135,52 @@ class DisposisiSuratController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $disposisi = DisposisiSurat::find($id);
+        try {
+            $disposisi = DisposisiSurat::find($id);
 
-        if (!$disposisi) {
+            if (!$disposisi) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Disposisi not found'
+                ], 404);
+            }
+
+            // Only creator can update
+            if ($disposisi->dari_user_id !== auth()->id() && !auth()->user()->hasRole('admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'kepada_user_id' => 'sometimes|exists:users,id',
+                'instruksi' => 'nullable|string',
+                'catatan' => 'nullable|string',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $disposisi->update($request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disposisi updated successfully',
+                'data' => $disposisi->load(['suratMasuk', 'dariUser', 'kepadaUser'])
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Disposisi not found'
-            ], 404);
+                'message' => 'Failed to update disposisi',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        // Only creator can update
-        if ($disposisi->dari_user_id !== auth()->id() && !auth()->user()->hasRole('admin')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'kepada_user_id' => 'sometimes|exists:users,id',
-            'instruksi' => 'nullable|string',
-            'catatan' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $disposisi->update($request->all());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Disposisi updated successfully',
-            'data' => $disposisi->load(['suratMasuk', 'dariUser', 'kepadaUser'])
-        ], 200);
     }
 
     /**
@@ -153,29 +188,37 @@ class DisposisiSuratController extends Controller
      */
     public function destroy($id)
     {
-        $disposisi = DisposisiSurat::find($id);
+        try {
+            $disposisi = DisposisiSurat::find($id);
 
-        if (!$disposisi) {
+            if (!$disposisi) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Disposisi not found'
+                ], 404);
+            }
+
+            // Only creator or admin can delete
+            if ($disposisi->dari_user_id !== auth()->id() && !auth()->user()->hasRole('admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $disposisi->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disposisi deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Disposisi not found'
-            ], 404);
+                'message' => 'Failed to delete disposisi',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        // Only creator or admin can delete
-        if ($disposisi->dari_user_id !== auth()->id() && !auth()->user()->hasRole('admin')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        $disposisi->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Disposisi deleted successfully'
-        ], 200);
     }
 
     /**
@@ -183,21 +226,29 @@ class DisposisiSuratController extends Controller
      */
     public function myDispositions(Request $request)
     {
-        $perPage = $request->get('per_page', 15);
-        $status = $request->get('status');
+        try {
+            $perPage = $request->get('per_page', 15);
+            $status = $request->get('status');
 
-        $disposisi = DisposisiSurat::with(['suratMasuk', 'dariUser'])
-            ->forUser(auth()->id())
-            ->when($status, function ($query, $status) {
-                return $query->byStatus($status);
-            })
-            ->latest()
-            ->paginate($perPage);
+            $disposisi = DisposisiSurat::with(['suratMasuk', 'dariUser'])
+                ->forUser(auth()->id())
+                ->when($status, function ($query, $status) {
+                    return $query->byStatus($status);
+                })
+                ->latest()
+                ->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'data' => $disposisi
-        ], 200);
+            return response()->json([
+                'success' => true,
+                'data' => $disposisi
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve my dispositions',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -205,30 +256,38 @@ class DisposisiSuratController extends Controller
      */
     public function markAsRead($id)
     {
-        $disposisi = DisposisiSurat::find($id);
+        try {
+            $disposisi = DisposisiSurat::find($id);
 
-        if (!$disposisi) {
+            if (!$disposisi) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Disposisi not found'
+                ], 404);
+            }
+
+            // Only recipient can mark as read
+            if ($disposisi->kepada_user_id !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $disposisi->markAsRead();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disposisi marked as read',
+                'data' => $disposisi->load(['suratMasuk', 'dariUser', 'kepadaUser'])
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Disposisi not found'
-            ], 404);
+                'message' => 'Failed to mark as read',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        // Only recipient can mark as read
-        if ($disposisi->kepada_user_id !== auth()->id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        $disposisi->markAsRead();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Disposisi marked as read',
-            'data' => $disposisi->load(['suratMasuk', 'dariUser', 'kepadaUser'])
-        ], 200);
     }
 
     /**
@@ -248,42 +307,50 @@ class DisposisiSuratController extends Controller
             ], 422);
         }
 
-        $disposisi = DisposisiSurat::find($id);
+        try {
+            $disposisi = DisposisiSurat::find($id);
 
-        if (!$disposisi) {
+            if (!$disposisi) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Disposisi not found'
+                ], 404);
+            }
+
+            // Only recipient can mark as completed
+            if ($disposisi->kepada_user_id !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            if ($request->has('catatan')) {
+                $disposisi->catatan = $request->catatan;
+            }
+
+            $disposisi->markAsCompleted();
+
+            // Check if all dispositions are completed, update surat masuk status
+            $suratMasuk = $disposisi->suratMasuk;
+            $allCompleted = $suratMasuk->disposisi()->where('status', '!=', 'selesai')->count() === 0;
+
+            if ($allCompleted) {
+                $suratMasuk->update(['status' => 'selesai']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disposisi marked as completed',
+                'data' => $disposisi->load(['suratMasuk', 'dariUser', 'kepadaUser'])
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Disposisi not found'
-            ], 404);
+                'message' => 'Failed to mark as completed',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        // Only recipient can mark as completed
-        if ($disposisi->kepada_user_id !== auth()->id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        if ($request->has('catatan')) {
-            $disposisi->catatan = $request->catatan;
-        }
-
-        $disposisi->markAsCompleted();
-
-        // Check if all dispositions are completed, update surat masuk status
-        $suratMasuk = $disposisi->suratMasuk;
-        $allCompleted = $suratMasuk->disposisi()->where('status', '!=', 'selesai')->count() === 0;
-
-        if ($allCompleted) {
-            $suratMasuk->update(['status' => 'selesai']);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Disposisi marked as completed',
-            'data' => $disposisi->load(['suratMasuk', 'dariUser', 'kepadaUser'])
-        ], 200);
     }
 
     /**
@@ -291,14 +358,22 @@ class DisposisiSuratController extends Controller
      */
     public function bySurat($suratId)
     {
-        $disposisi = DisposisiSurat::with(['dariUser', 'kepadaUser'])
-            ->where('id_surat_masuk', $suratId)
-            ->latest()
-            ->get();
+        try {
+            $disposisi = DisposisiSurat::with(['dariUser', 'kepadaUser'])
+                ->where('id_surat_masuk', $suratId)
+                ->latest()
+                ->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $disposisi
-        ], 200);
+            return response()->json([
+                'success' => true,
+                'data' => $disposisi
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve dispositions',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 }

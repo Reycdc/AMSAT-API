@@ -12,16 +12,27 @@ class CommentController extends Controller
     /**
      * Display a listing of comments
      */
+    /**
+     * Display a listing of comments
+     */
     public function index()
     {
-        $comments = Comment::with(['user', 'content'])
-            ->latest()
-            ->paginate(20);
+        try {
+            $comments = Comment::with(['user', 'content'])
+                ->latest()
+                ->paginate(20);
 
-        return response()->json([
-            'success' => true,
-            'data' => $comments
-        ], 200);
+            return response()->json([
+                'success' => true,
+                'data' => $comments
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve comments',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -42,17 +53,25 @@ class CommentController extends Controller
             ], 422);
         }
 
-        $comment = Comment::create([
-            'user_id' => auth()->id(),
-            'news_id' => $request->news_id,
-            'comment' => $request->comment,
-        ]);
+        try {
+            $comment = Comment::create([
+                'user_id' => auth()->id(),
+                'news_id' => $request->news_id,
+                'comment' => $request->comment,
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Comment created successfully',
-            'data' => $comment->load('user', 'content')
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Comment created successfully',
+                'data' => $comment->load('user', 'content')
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create comment',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -60,19 +79,27 @@ class CommentController extends Controller
      */
     public function show($id)
     {
-        $comment = Comment::with(['user', 'content'])->find($id);
+        try {
+            $comment = Comment::with(['user', 'content'])->find($id);
 
-        if (!$comment) {
+            if (!$comment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Comment not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $comment
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Comment not found'
-            ], 404);
+                'message' => 'Failed to retrieve comment',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => $comment
-        ], 200);
     }
 
     /**
@@ -80,42 +107,50 @@ class CommentController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $comment = Comment::find($id);
+        try {
+            $comment = Comment::find($id);
 
-        if (!$comment) {
+            if (!$comment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Comment not found'
+                ], 404);
+            }
+
+            // Check ownership
+            if ($comment->user_id !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'comment' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $comment->update($request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Comment updated successfully',
+                'data' => $comment->load('user', 'content')
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Comment not found'
-            ], 404);
+                'message' => 'Failed to update comment',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        // Check ownership
-        if ($comment->user_id !== auth()->id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'comment' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $comment->update($request->all());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Comment updated successfully',
-            'data' => $comment->load('user', 'content')
-        ], 200);
     }
 
     /**
@@ -123,29 +158,37 @@ class CommentController extends Controller
      */
     public function destroy($id)
     {
-        $comment = Comment::find($id);
+        try {
+            $comment = Comment::find($id);
 
-        if (!$comment) {
+            if (!$comment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Comment not found'
+                ], 404);
+            }
+
+            // Check ownership
+            if ($comment->user_id !== auth()->id() && !auth()->user()->hasRole(['admin', 'editor'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $comment->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Comment deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Comment not found'
-            ], 404);
+                'message' => 'Failed to delete comment',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        // Check ownership
-        if ($comment->user_id !== auth()->id() && !auth()->user()->hasRole(['admin', 'editor'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        $comment->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Comment deleted successfully'
-        ], 200);
     }
 
     /**
@@ -153,14 +196,22 @@ class CommentController extends Controller
      */
     public function getByContent($id)
     {
-        $comments = Comment::with('user')
-            ->where('news_id', $id)
-            ->latest()
-            ->paginate(20);
+        try {
+            $comments = Comment::with('user')
+                ->where('news_id', $id)
+                ->latest()
+                ->paginate(20);
 
-        return response()->json([
-            'success' => true,
-            'data' => $comments
-        ], 200);
+            return response()->json([
+                'success' => true,
+                'data' => $comments
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve comments',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 }
